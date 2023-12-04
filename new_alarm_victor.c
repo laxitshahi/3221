@@ -1,15 +1,3 @@
-/*
- * alarm_cond.c
- *
- * This is an enhancement to the alarm_mutex.c program, which
- * used only a mutex to synchronize access to the shared alarm
- * list. This version adds a condition variable. The alarm
- * thread waits on this condition variable, with a timeout that
- * corresponds to the earliest timer request. If the main thread
- * enters an earlier timeout, it signals the condition variable
- * so that the alarm thread will wake up and process the earlier
- * timeout first, requeueing the later request.
- */
 #include <pthread.h>
 #include <time.h>
 #include "errors.h"
@@ -18,13 +6,6 @@
 void *display_thread(void *arg);
 void create_display_thread(int group_id);
 
-/*
- * The "alarm" structure now contains the time_t (time since the
- * Epoch, in seconds) for each alarm, so that they can be
- * sorted. Storing the requested number of seconds would not be
- * enough, since the "alarm thread" cannot tell how long it has
- * been on the list.
- */
 typedef struct alarm_tag
 {
     struct alarm_tag *link;
@@ -35,6 +16,8 @@ typedef struct alarm_tag
     time_t time;            /* seconds from EPOCH */
     char message[129];      // Increased size to 128 characters
     int assigned_to_thread; // 0: not assigned, 1: assigned
+    int original_group_id;  // To track changes in group ID
+    int message_changed;    // Flag to indicate if the message has changed
 } alarm_t;
 
 typedef struct change_alarm_tag
@@ -78,9 +61,6 @@ void alarm_insert(alarm_t *alarm)
 
     /*
      * LOCKING PROTOCOL:
-     *
-     * This routine requires that the caller have locked the
-     * alarm_mutex!
      */
     last = &alarm_list;
     next = *last;
@@ -113,13 +93,6 @@ void alarm_insert(alarm_t *alarm)
 
     pthread_cond_signal(&alarm_cond);
 
-#ifdef DEBUG
-    printf("[list: ");
-    for (next = alarm_list; next != NULL; next = next->link)
-        printf("%d(%d)[\"%s\"] ", next->time,
-               next->time - time(NULL), next->message);
-    printf("]\n");
-#endif
     /*
      * Wake the alarm thread if it is not busy (that is, if
      * current_alarm is 0, signifying that it's waiting for
@@ -210,9 +183,16 @@ void *alarm_thread(void *arg)
             {
                 if (alarm->alarm_id == change->alarm_id)
                 {
-                    alarm->group_id = change->group_id;
-                    alarm->time = change->time;
-                    strncpy(alarm->message, change->message, sizeof(alarm->message) - 1);
+                    if (alarm->group_id != change->group_id)
+                    {
+                        alarm->original_group_id = alarm->group_id;
+                        alarm->group_id = change->group_id;
+                    }
+                    if (strcmp(alarm->message, change->message) != 0)
+                    {
+                        strncpy(alarm->message, change->message, sizeof(alarm->message) - 1);
+                        alarm->message_changed = 1;
+                    }
                     printf("Alarm Monitor Thread %p Has Changed Alarm(%d) at %ld: Group(%d) %s\n",
                            pthread_self(), alarm->alarm_id, (long)time(NULL), alarm->group_id, alarm->message);
 
@@ -316,8 +296,24 @@ void *display_thread(void *arg)
         {
             if (alarm->group_id == group_id && alarm->time > now)
             {
-                printf("Alarm (%d) Printed by Alarm Display Thread %p at %ld: Group(%d) %s\n",
-                       alarm->alarm_id, pthread_self(), (long)now, alarm->group_id, alarm->message);
+                if (alarm->original_group_id != 0)
+                {
+                    printf("Display Thread %p Has Stopped Printing Message of Alarm(%d) at %ld: Changed Group(%d) %s\n",
+                           pthread_self(), alarm->alarm_id, (long)now, alarm->original_group_id, alarm->message);
+                    alarm->original_group_id = 0; // Reset after printing
+                }
+                else if (alarm->message_changed)
+                {
+                    printf("Display Thread %p Starts to Print Changed Message Alarm(%d) at %ld: Group(%d) %s\n",
+                           pthread_self(), alarm->alarm_id, (long)now, alarm->group_id, alarm->message);
+                    alarm->message_changed = 0; // Reset after printing
+                }
+                else
+                {
+                    // Normal printing of the message
+                    printf("Alarm (%d) Printed by Alarm Display Thread %p at %ld: Group(%d) %s\n",
+                           alarm->alarm_id, pthread_self(), (long)now, alarm->group_id, alarm->message);
+                }
                 found = 1;
             }
         }
