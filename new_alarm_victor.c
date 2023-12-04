@@ -37,13 +37,22 @@ typedef struct display_thread_info_tag
     int alarm_count; // Number of alarms assigned to this thread
 } display_thread_info_t;
 
+typedef struct removed_alarm_tag
+{
+    struct removed_alarm_tag *link;
+    int alarm_id;
+    int group_id;
+    time_t removal_time;
+    char message[129];
+} removed_alarm_t;
+
 #define MAX_DISPLAY_THREADS 10
 display_thread_info_t display_threads[MAX_DISPLAY_THREADS];
 
-// pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t alarm_cond = PTHREAD_COND_INITIALIZER;
 alarm_t *alarm_list = NULL;
 change_alarm_t *change_alarm_list = NULL;
+removed_alarm_t *removed_alarm_list = NULL;
 time_t current_alarm = 0;
 
 sem_t alarm_list_sem;  // Semaphore for alarm list
@@ -115,7 +124,6 @@ void change_alarm_insert(change_alarm_t *change_alarm)
     sem_wait(&change_list_sem); // Wait on the semaphore before accessing change_alarm_list
 
     // LOCKING PROTOCOL:
-    // Assumes that the caller has locked the alarm_mutex
 
     last = &change_alarm_list;
     next = *last;
@@ -142,88 +150,6 @@ void change_alarm_insert(change_alarm_t *change_alarm)
 
     printf("Change Alarm Request (%d) Inserted by Main Thread %p into Change Alarm List at %ld: Group(%d) %s\n",
            change_alarm->alarm_id, pthread_self(), (long)time(NULL), change_alarm->group_id, change_alarm->message);
-}
-
-/*
- * The alarm thread's start routine.
- */
-void *alarm_thread(void *arg)
-{
-    while (1)
-    {
-        alarm_t *current_alarm = NULL;
-        time_t now = time(NULL);
-        int status;
-
-        // Wait on the semaphores before accessing the lists
-        sem_wait(&alarm_list_sem);
-        sem_wait(&change_list_sem);
-
-        // Process and remove expired alarms
-        while (alarm_list != NULL && alarm_list->time <= now)
-        {
-            current_alarm = alarm_list;
-            alarm_list = alarm_list->link;
-            printf("Alarm Monitor Thread %p Has Removed Alarm(%d) at %ld: Group(%d) %s\n",
-                   pthread_self(), current_alarm->alarm_id, (long)now, current_alarm->group_id, current_alarm->message);
-            free(current_alarm);
-            current_alarm = NULL;
-        }
-
-        // Process Change_Alarm requests
-        change_alarm_t *change = change_alarm_list;
-        // While there exists a "change_alarm_list" continue looking for alarms with:
-        // same alarm_id
-        while (change != NULL)
-        {
-            // Flag to check if a corresponding alarm between alarm_list and change_alarm_list exists
-            int found_pair = 0;
-            // Find the alarm with the same Alarm_ID and apply changes
-            for (alarm_t *alarm = alarm_list; alarm != NULL; alarm = alarm->link)
-            {
-                if (alarm->alarm_id == change->alarm_id)
-                {
-                    if (alarm->group_id != change->group_id)
-                    {
-                        alarm->original_group_id = alarm->group_id;
-                        alarm->group_id = change->group_id;
-                    }
-                    if (strcmp(alarm->message, change->message) != 0)
-                    {
-                        strncpy(alarm->message, change->message, sizeof(alarm->message) - 1);
-                        alarm->message_changed = 1;
-                    }
-                    printf("Alarm Monitor Thread %p Has Changed Alarm(%d) at %ld: Group(%d) %s\n",
-                           pthread_self(), alarm->alarm_id, (long)time(NULL), alarm->group_id, alarm->message);
-
-                    found_pair = 1;
-                    // We want to save the alarm in change_alarm_list, so break
-                    break;
-                }
-            }
-            // If there was no corresponding alarm found, then we print error
-            if (!found_pair)
-            {
-                printf("Invalid Change Alarm Request(%d) at %ld: Group(%d) %s\n",
-                       change->alarm_id, (long)time(NULL), change->group_id, change->message);
-            }
-
-            // Remove the alarm used to update the alarm in the alarm_list from change_alarm_list
-            change_alarm_t *temp = change;
-            change = change->link;
-            free(temp);
-        }
-        change_alarm_list = NULL;
-
-        // Post to the semaphores after modifying the lists
-        sem_post(&change_list_sem);
-        sem_post(&alarm_list_sem);
-
-        // Sleep or wait for a condition to efficiently use CPU
-        sleep(1); // Adjust sleep time as needed
-    }
-
-    return NULL; // Return statement to avoid compiler warnings
 }
 
 void assign_alarm_to_display_thread(alarm_t *alarm)
@@ -260,6 +186,100 @@ void assign_alarm_to_display_thread(alarm_t *alarm)
     }
 }
 
+/*
+ * The alarm thread's start routine.
+ */
+void *alarm_thread(void *arg)
+{
+    while (1)
+    {
+        alarm_t *current_alarm = NULL;
+        time_t now = time(NULL);
+        int status;
+
+        // Wait on the semaphores before accessing the lists
+        sem_wait(&alarm_list_sem);
+        sem_wait(&change_list_sem);
+
+        // Process and remove expired alarms
+        while (alarm_list != NULL && alarm_list->time <= now)
+        {
+            current_alarm = alarm_list;
+            alarm_list = alarm_list->link;
+            removed_alarm_t *removed_alarm = (removed_alarm_t *)malloc(sizeof(removed_alarm_t));
+            if (removed_alarm != NULL)
+            {
+                removed_alarm->alarm_id = current_alarm->alarm_id;
+                removed_alarm->group_id = current_alarm->group_id;
+                removed_alarm->removal_time = now;
+                strncpy(removed_alarm->message, current_alarm->message, sizeof(removed_alarm->message) - 1);
+                removed_alarm->link = removed_alarm_list;
+                removed_alarm_list = removed_alarm;
+            }
+            printf("Alarm Monitor Thread %p Has Removed Alarm(%d) at %ld: Group(%d) %s\n",
+                   pthread_self(), current_alarm->alarm_id, (long)now, current_alarm->group_id, current_alarm->message);
+            free(current_alarm);
+            current_alarm = NULL;
+        }
+
+        // Process Change_Alarm requests
+        change_alarm_t *change = change_alarm_list;
+        // While there exists a "change_alarm_list" continue looking for alarms with:
+        // same alarm_id
+        while (change != NULL)
+        {
+            // Flag to check if a corresponding alarm between alarm_list and change_alarm_list exists
+            int found_pair = 0;
+            // Find the alarm with the same Alarm_ID and apply changes
+            for (alarm_t *alarm = alarm_list; alarm != NULL; alarm = alarm->link)
+            {
+                if (alarm->alarm_id == change->alarm_id)
+                {
+                    if (alarm->group_id != change->group_id)
+                    {
+                        alarm->original_group_id = alarm->group_id;
+                        alarm->group_id = change->group_id;
+                        assign_alarm_to_display_thread(alarm); // Reassign the alarm
+                    }
+                    if (strcmp(alarm->message, change->message) != 0)
+                    {
+                        strncpy(alarm->message, change->message, sizeof(alarm->message) - 1);
+                        alarm->message_changed = 1;
+                    }
+                    alarm->time = change->time; // Update the time of the alarm
+                    printf("Alarm Monitor Thread %p Has Changed Alarm(%d) at %ld: Group(%d) %s\n",
+                           pthread_self(), alarm->alarm_id, (long)time(NULL), alarm->group_id, alarm->message);
+
+                    found_pair = 1;
+                    // We want to save the alarm in change_alarm_list, so break
+                    break;
+                }
+            }
+            // If there was no corresponding alarm found, then we print error
+            if (!found_pair)
+            {
+                printf("Invalid Change Alarm Request(%d) at %ld: Group(%d) %s\n",
+                       change->alarm_id, (long)time(NULL), change->group_id, change->message);
+            }
+
+            // Remove the alarm used to update the alarm in the alarm_list from change_alarm_list
+            change_alarm_t *temp = change;
+            change = change->link;
+            free(temp);
+        }
+        change_alarm_list = NULL;
+
+        // Post to the semaphores after modifying the lists
+        sem_post(&change_list_sem);
+        sem_post(&alarm_list_sem);
+
+        // Sleep or wait for a condition to efficiently use CPU
+        sleep(1); // Adjust sleep time as needed
+    }
+
+    return NULL; // Return statement to avoid compiler warnings
+}
+
 void create_display_thread(int group_id)
 {
     for (int i = 0; i < MAX_DISPLAY_THREADS; i++)
@@ -288,13 +308,29 @@ void *display_thread(void *arg)
     {
         sem_wait(&alarm_list_sem); // Wait on the semaphore before accessing alarm_list
 
+        removed_alarm_t **last = &removed_alarm_list, *current;
+        while ((current = *last) != NULL)
+        {
+            if (current->group_id == group_id)
+            {
+                printf("Display Thread %p Has Stopped Printing Message of Alarm(%d) at %ld: Group(%d) %s\n",
+                       pthread_self(), current->alarm_id, (long)current->removal_time, current->group_id, current->message);
+                *last = current->link;
+                free(current);
+            }
+            else
+            {
+                last = &current->link;
+            }
+        }
+
         int found = 0;
         time_t now = time(NULL);
 
         // Iterate over the alarm list and print messages for the matching group
         for (alarm_t *alarm = alarm_list; alarm != NULL; alarm = alarm->link)
         {
-            if (alarm->group_id == group_id && alarm->time > now)
+            if (alarm->group_id == group_id)
             {
                 if (alarm->original_group_id != 0)
                 {
