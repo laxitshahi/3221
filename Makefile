@@ -1,5 +1,5 @@
 CC = cc 
-filename = new_alarm_victor.c
+filename = new_alarm_cond.c
 output = alarm
 
 all: main run
