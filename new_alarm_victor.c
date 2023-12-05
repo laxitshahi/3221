@@ -347,8 +347,9 @@ void *display_thread(void *arg)
                 else
                 {
                     // Normal printing of the message
-                    printf("Alarm (%d) Printed by Alarm Display Thread %p at %ld: Group(%d) %s\n",
-                           alarm->alarm_id, pthread_self(), (long)now, alarm->group_id, alarm->message);
+                    int time_left = (int)difftime(alarm->time, now);
+                    printf("Alarm (%d) Printed by Alarm Display Thread %p at %ld: Group(%d) %d %s\n",
+                           alarm->alarm_id, pthread_self(), (long)now, alarm->group_id, time_left, alarm->message);
                 }
                 found = 1;
             }
