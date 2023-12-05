@@ -64,7 +64,7 @@ sem_t change_list_sem; // Semaphore for change alarm list
 void alarm_insert(alarm_t *alarm)
 {
     int status;
-    alarm_t **last, *next; 
+    alarm_t **last, *next;
 
     sem_wait(&alarm_list_sem); // Wait on the semaphore before accessing alarm_list
 
@@ -173,11 +173,11 @@ void assign_alarm_to_display_thread(alarm_t *alarm)
             if (display_threads[i].alarm_count < 2)
             {
 
-            // 1. Increment the number of alarms this particular display thread handles
+                // 1. Increment the number of alarms this particular display thread handles
                 display_threads[i].alarm_count++;
-            // 2. Set assign flag to 1 so that a new thread is not create below
+                // 2. Set assign flag to 1 so that a new thread is not create below
                 assigned = 1;
-            // 3. Print coresponding message to user
+                // 3. Print coresponding message to user
                 printf("Main Thread %p Assigned to Display Alarm(%d) at %ld: Group(%d) %s\n",
                        pthread_self(), alarm->alarm_id, (long)time(NULL), alarm->group_id, alarm->message);
                 break;
@@ -301,16 +301,15 @@ void create_display_thread(int group_id)
     // Loop through each display thread
     for (int i = 0; i < MAX_DISPLAY_THREADS; i++)
     {
-      // ONLY if this display thread is inactive (active == 0)
+        // ONLY if this display thread is inactive (active == 0)
         if (display_threads[i].active == 0)
         {
-          // Setup display thread with given group_id
+            // Setup display thread with given group_id
             display_threads[i].group_id = group_id;
             display_threads[i].active = 1;
             display_threads[i].alarm_count = 1;
 
-          
-            // Allocate space for the display thread 
+            // Allocate space for the display thread
             int *arg = malloc(sizeof(int));
             *arg = group_id;
 
@@ -331,8 +330,6 @@ void *display_thread(void *arg)
     {
         sem_wait(&alarm_list_sem); // Wait on the semaphore before accessing alarm_list
 
-        
-
         // Logic for when an alarm is removed
         removed_alarm_t **last = &removed_alarm_list, *current;
 
@@ -342,15 +339,15 @@ void *display_thread(void *arg)
             // If the given group_id (from args) is equal to any of the removed alarms...
             if (current->group_id == group_id)
             {
-              // 1. Print message to users to notify them that the thread is no longer with the particular alarm
+                // 1. Print message to users to notify them that the thread is no longer with the particular alarm
                 printf("Display Thread %p Has Stopped Printing Message of Alarm(%d) at %ld: Group(%d) %s\n",
                        pthread_self(), current->alarm_id, (long)current->removal_time, current->group_id, current->message);
-                
+
                 *last = current->link;
-              // Free memory used by alarm in removed_alarm_list
+                // Free memory used by alarm in removed_alarm_list
                 free(current);
             }
-          
+
             // If no alarm is found that matches the group_id, simply iterate to the next value to check again
             else
             {
@@ -358,9 +355,6 @@ void *display_thread(void *arg)
             }
         }
 
-
-
-        
         int found = 0;
         time_t now = time(NULL);
 
@@ -372,7 +366,7 @@ void *display_thread(void *arg)
                 /*
                  * if alarm's group_id has been changed:
                  * print message to user to notify and reset flag to unchanged (0)
-                */
+                 */
                 if (alarm->original_group_id != 0)
                 {
                     printf("Display Thread %p Has Stopped Printing Message of Alarm(%d) at %ld: Changed Group(%d) %s\n",
@@ -382,14 +376,14 @@ void *display_thread(void *arg)
                 /*
                  * if alarm's group_id has been changed:
                  * print message to user to notify and reset flag to unchanged (0)
-                */
-                  else if (alarm->message_changed)
-                  {
+                 */
+                else if (alarm->message_changed)
+                {
                     printf("Display Thread %p Starts to Print Changed Message Alarm(%d) at %ld: Group(%d) %s\n",
                            pthread_self(), alarm->alarm_id, (long)now, alarm->group_id, alarm->message);
                     alarm->message_changed = 0; // Reset after printing
                 }
-                
+
                 // If there have be no changes to the alarm's group_id or message, print normal message that prints every 5 seconds
                 else
                 {
@@ -430,7 +424,6 @@ int main(int argc, char *argv[])
     sem_init(&alarm_list_sem, 0, 1);  // Initialize semaphore for alarm list
     sem_init(&change_list_sem, 0, 1); // Initialize semaphore for change alarm list
 
-
     // Start always running pthread that handles alarms
     status = pthread_create(
         &thread, NULL, alarm_thread, NULL);
@@ -452,13 +445,12 @@ int main(int argc, char *argv[])
         if (strlen(line) <= 1)
             continue;
 
-      
         // If "Start_Alarm" command is called
         if (strncmp(line, "Start_Alarm", 11) == 0)
         {
             // Allocate memory for alarm
             alarm_t *alarm = (alarm_t *)malloc(sizeof(alarm_t));
-          // if allocation fails, throw err and abort
+            // if allocation fails, throw err and abort
             if (alarm == NULL)
                 errno_abort("Allocate alarm");
 
