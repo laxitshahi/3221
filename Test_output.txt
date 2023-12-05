@@ -1,0 +1,123 @@
+crimson 315 % make
+cc  new_alarm_victor.c -D_POSIX_PTHREAD_SEMANTICS -lpthread -o alarm
+./alarm
+Test 1:
+Alarm> Invalid_Command
+Invalid command
+
+Test 2:
+Alarm> Start_Alarm(1) 10 TestAlarm
+Bad Start_Alarm command
+
+Test 3:
+Alarm> Change_Alarm(1): Group(1) 10 TestAlarm
+Change Alarm Request (1) Inserted by Main Thread 0x7f29cb06d740 into Change Alarm List at 1701753282: Group(1) TestAlarm
+Alarm> Invalid Change Alarm Request(1) at 1701753282: Group(1) TestAlarm
+
+Test 4:
+Alarm> Start_Alarm(1): Group(1) -5 TestAlarm
+Main Thread Created New Display Alarm Thread 0x7f29cb06d740 For Alarm(1) at 1701753305: Group(1) TestAlarm
+Alarm(1) Inserted by Main Thread 0x7f29cb06d740 Into Alarm List at 1701753305: Group(1) TestAlarm
+Alarm> Alarm (1) Printed by Alarm Display Thread 0x7f29ca078700 at 1701753305: Group(1) -5 TestAlarm
+Alarm Monitor Thread 0x7f29ca879700 Has Removed Alarm(1) at 1701753305: Group(1) TestAlarm
+Alarm> Display Thread 0x7f29ca078700 Has Stopped Printing Message of Alarm(1) at 1701753305: Group(1) TestAlarm
+No More Alarms in Group(1): Display Thread 0x7f29ca078700 exiting at 1701753310
+
+Test 5:
+Alarm> Start_Alarm(1): Group(1) 20 TestAlarm1
+Main Thread 0x7f29cb06d740 Assigned to Display Alarm(1) at 1701753360: Group(1) TestAlarm1
+Alarm(1) Inserted by Main Thread 0x7f29cb06d740 Into Alarm List at 1701753360: Group(1) TestAlarm1
+Alarm> Start_Alarm(2): Group(1) 10 TestAlarm2
+Main Thread Created New Display Alarm Thread 0x7f29cb06d740 For Alarm(2) at 1701753363: Group(1) TestAlarm2
+Alarm(2) Inserted by Main Thread 0x7f29cb06d740 Into Alarm List at 1701753363: Group(1) TestAlarm2
+Alarm> Alarm (2) Printed by Alarm Display Thread 0x7f29c9877700 at 1701753363: Group(1) 10 TestAlarm2
+Alarm (1) Printed by Alarm Display Thread 0x7f29c9877700 at 1701753363: Group(1) 17 TestAlarm1
+Alarm (2) Printed by Alarm Display Thread 0x7f29c9877700 at 1701753368: Group(1) 5 TestAlarm2
+Alarm (1) Printed by Alarm Display Thread 0x7f29c9877700 at 1701753368: Group(1) 12 TestAlarm1
+Start_Alarm(3): Group(2) 5 TestAlarm3
+Main Thread Created New Display Alarm Thread 0x7f29cb06d740 For Alarm(3) at 1701753371: Group(2) TestAlarm3
+Alarm(3) Inserted by Main Thread 0x7f29cb06d740 Into Alarm List at 1701753371: Group(2) TestAlarm3
+Alarm> Alarm (3) Printed by Alarm Display Thread 0x7f29c9076700 at 1701753371: Group(2) 5 TestAlarm3
+Alarm (2) Printed by Alarm Display Thread 0x7f29c9877700 at 1701753373: Group(1) 0 TestAlarm2
+Alarm (1) Printed by Alarm Display Thread 0x7f29c9877700 at 1701753373: Group(1) 7 TestAlarm1
+Alarm Monitor Thread 0x7f29ca879700 Has Removed Alarm(2) at 1701753373: Group(1) TestAlarm2
+Alarm (3) Printed by Alarm Display Thread 0x7f29c9076700 at 1701753376: Group(2) 0 TestAlarm3
+Alarm Monitor Thread 0x7f29ca879700 Has Removed Alarm(3) at 1701753376: Group(2) TestAlarm3
+Display Thread 0x7f29c9877700 Has Stopped Printing Message of Alarm(2) at 1701753373: Group(1) TestAlarm2
+Alarm (1) Printed by Alarm Display Thread 0x7f29c9877700 at 1701753378: Group(1) 2 TestAlarm1
+Alarm Monitor Thread 0x7f29ca879700 Has Removed Alarm(1) at 1701753380: Group(1) TestAlarm1
+Display Thread 0x7f29c9076700 Has Stopped Printing Message of Alarm(3) at 1701753376: Group(2) TestAlarm3
+No More Alarms in Group(2): Display Thread 0x7f29c9076700 exiting at 1701753381
+Display Thread 0x7f29c9877700 Has Stopped Printing Message of Alarm(1) at 1701753380: Group(1) TestAlarm1
+No More Alarms in Group(1): Display Thread 0x7f29c9877700 exiting at 1701753383
+
+Test 6:
+Alarm> Start_Alarm(1): Group(1) 10 TestAlarm1
+Main Thread 0x7f29cb06d740 Assigned to Display Alarm(1) at 1701753447: Group(1) TestAlarm1
+Alarm(1) Inserted by Main Thread 0x7f29cb06d740 Into Alarm List at 1701753447: Group(1) TestAlarm1
+Alarm> Start_Alarm(2): Group(1) 10 TestAlarm2
+Main Thread Created New Display Alarm Thread 0x7f29cb06d740 For Alarm(2) at 1701753450: Group(1) TestAlarm2
+Alarm (1) Printed by Alarm Display Thread 0x7f29c8875700 at 1701753450: Group(1) 7 TestAlarm1
+Alarm(2) Inserted by Main Thread 0x7f29cb06d740 Into Alarm List at 1701753450: Group(1) TestAlarm2
+Alarm> Alarm (1) Printed by Alarm Display Thread 0x7f29c8875700 at 1701753455: Group(1) 2 TestAlarm1
+Alarm (2) Printed by Alarm Display Thread 0x7f29c8875700 at 1701753455: Group(1) 5 TestAlarm2
+Alarm Monitor Thread 0x7f29ca879700 Has Removed Alarm(1) at 1701753457: Group(1) TestAlarm1
+Display Thread 0x7f29c8875700 Has Stopped Printing Message of Alarm(1) at 1701753457: Group(1) TestAlarm1
+Alarm (2) Printed by Alarm Display Thread 0x7f29c8875700 at 1701753460: Group(1) 0 TestAlarm2
+Alarm Monitor Thread 0x7f29ca879700 Has Removed Alarm(2) at 1701753460: Group(1) TestAlarm2
+Display Thread 0x7f29c8875700 Has Stopped Printing Message of Alarm(2) at 1701753460: Group(1) TestAlarm2
+No More Alarms in Group(1): Display Thread 0x7f29c8875700 exiting at 1701753465
+
+Test 7:
+Alarm> Start_Alarm(1): Group(1) 25 TestAlarm
+Main Thread 0x7f29cb06d740 Assigned to Display Alarm(1) at 1701753489: Group(1) TestAlarm
+Alarm(1) Inserted by Main Thread 0x7f29cb06d740 Into Alarm List at 1701753489: Group(1) TestAlarm
+Alarm> Change_Alarm(1): Group(1) 5 UpdatedAlarm
+Change Alarm Request (1) Inserted by Main Thread 0x7f29cb06d740 into Change Alarm List at 1701753491: Group(1) UpdatedAlarm
+Alarm> Alarm Monitor Thread 0x7f29ca879700 Has Changed Alarm(1) at 1701753491: Group(1) UpdatedAlarm
+Alarm Monitor Thread 0x7f29ca879700 Has Removed Alarm(1) at 1701753496: Group(1) UpdatedAlarm
+
+Test 8:
+Alarm> Start_Alarm(1): Group(1) 20 TestAlarm
+Main Thread Created New Display Alarm Thread 0x7f29cb06d740 For Alarm(1) at 1701753596: Group(1) TestAlarm
+Display Thread 0x7f29bbfff700 Has Stopped Printing Message of Alarm(1) at 1701753496: Group(1) UpdatedAlarm
+No More Alarms in Group(1): Display Thread 0x7f29bbfff700 exiting at 1701753596
+Alarm(1) Inserted by Main Thread 0x7f29cb06d740 Into Alarm List at 1701753596: Group(1) TestAlarm
+Alarm> Change_Alarm(2): Group(1) 10 UpdatedAlarm
+Change Alarm Request (2) Inserted by Main Thread 0x7f29cb06d740 into Change Alarm List at 1701753599: Group(1) UpdatedAlarm
+Alarm> Invalid Change Alarm Request(2) at 1701753600: Group(1) UpdatedAlarm
+Alarm Monitor Thread 0x7f29ca879700 Has Removed Alarm(1) at 1701753616: Group(1) TestAlarm
+
+Test 9:
+Alarm> Start_Alarm(1): Group(1) 20 TestAlarm
+Main Thread 0x7f29cb06d740 Assigned to Display Alarm(1) at 1701753657: Group(1) TestAlarm
+Alarm(1) Inserted by Main Thread 0x7f29cb06d740 Into Alarm List at 1701753657: Group(1) TestAlarm
+Alarm> Change_Alarm(1): Group(2) 10 UpdatedAlarm
+Change Alarm Request (1) Inserted by Main Thread 0x7f29cb06d740 into Change Alarm List at 1701753660: Group(2) UpdatedAlarm
+Alarm> Main Thread 0x7f29ca879700 Assigned to Display Alarm(1) at 1701753661: Group(2) TestAlarm
+Alarm Monitor Thread 0x7f29ca879700 Has Changed Alarm(1) at 1701753661: Group(2) UpdatedAlarm
+Alarm Monitor Thread 0x7f29ca879700 Has Removed Alarm(1) at 1701753670: Group(2) UpdatedAlarm
+
+Test 10:
+Alarm> Start_Alarm(1): Group(1) 10 TestAlarm
+Main Thread Created New Display Alarm Thread 0x7f29cb06d740 For Alarm(1) at 1701753709: Group(1) TestAlarm
+Alarm(1) Inserted by Main Thread 0x7f29cb06d740 Into Alarm List at 1701753709: Group(1) TestAlarm
+Alarm> Display Thread 0x7f29bb7fe700 Has Stopped Printing Message of Alarm(1) at 1701753616: Group(1) TestAlarm
+Display Thread 0x7f29bb7fe700 Has Stopped Printing Message of Alarm(1) at 1701753709: Changed Group(1) TestAlarm
+Change_Alarm(1): Group(1) InvalidTime UpdatedAlarm
+Bad Change_Alarm command
+Alarm> Display Thread 0x7f29bb7fe700 Starts to Print Changed Message Alarm(1) at 1701753714: Group(1) TestAlarm
+Alarm (1) Printed by Alarm Display Thread 0x7f29bb7fe700 at 1701753719: Group(1) 0 TestAlarm
+Alarm Monitor Thread 0x7f29ca879700 Has Removed Alarm(1) at 1701753719: Group(1) TestAlarm
+Display Thread 0x7f29bb7fe700 Has Stopped Printing Message of Alarm(1) at 1701753719: Group(1) TestAlarm
+No More Alarms in Group(1): Display Thread 0x7f29bb7fe700 exiting at 1701753724
+
+Test 11:
+Alarm> Start_Alarm(1): Group(1) 20 TestAlarm
+Main Thread 0x7f29cb06d740 Assigned to Display Alarm(1) at 1701753803: Group(1) TestAlarm
+Alarm(1) Inserted by Main Thread 0x7f29cb06d740 Into Alarm List at 1701753803: Group(1) TestAlarm
+Alarm> Change_Alarm(1): Group(1) 8 TestAlarm
+Change Alarm Request (1) Inserted by Main Thread 0x7f29cb06d740 into Change Alarm List at 1701753805: Group(1) TestAlarm
+Alarm> Alarm Monitor Thread 0x7f29ca879700 Has Changed Alarm(1) at 1701753806: Group(1) TestAlarm
+Alarm Monitor Thread 0x7f29ca879700 Has Removed Alarm(1) at 1701753813: Group(1) TestAlarm
+
